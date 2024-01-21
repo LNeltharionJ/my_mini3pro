@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鼠大王二世捕获的江山</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="content">
+        <div class="header">
+            <img class="logo" src=".\asset\img\logo.png" alt="">
+            <span class="home">HOME</span>
+        </div>
+
+        <div class="photo-wall">
+        </div>
+
+        <div class="photo-detail">
+        </div>
+    </div>
+
+
+
+    <script src="./photo.js"></script>
+    <script>
+        /////////////主页部分/////////////
+        // 加载先设置主页的dom
+        const photoWall = document.querySelector('.photo-wall')
+        photosInfo.forEach(item => {
+            creatHomePhotoDom(item.cephalogram_url, item.size, item.name, item.introduction, item.music_url)
+        })
+
+        const content = document.querySelector('.content')
+        const photoDetail = document.querySelector('.photo-detail')
+        const photoItem = document.querySelectorAll('.photo-item')
+        const home = document.querySelector('.home')
+        const logo = document.querySelector('.logo')
+        let isHome = false
+        let scrollTop
+
+        // 设置主页的dom字符串(调用photo.js显示主页的图片，home显示的初始页面)
+        function creatHomePhotoDom(url, size, name, introduction) {
+            const photoItem = `
+            <div class="photo-item ${size} width-cell">
+                <div class="thumb-hover">
+                </div>
+                <img src="${url}">
+                <div class="tips">
+                    <span class="name">
+                        ${name}
+                    </span>
+                    <span class="introduction">
+                        ${introduction}
+                    </span>
+                </div>
+            </div>
+            `
+            photoWall.innerHTML += photoItem;
+        }
+
+        /////////////子页图片设置部分/////////////
+        // 进入照片详情设置除相关topPhoto外的dom字符串（各分块子图的文字信息）
+        function creatDetailPhotoDom(url, children_introduction) {
+            return `
+            <div class="photo-detail-item">
+                <img ${children_introduction ? `class="width-15 width-11 d-width-cell"` : ``} src="${url}">
+                ${children_introduction ?
+                    `<div class="introduction width-11 d-width-cell">
+                        <p>${children_introduction}</p>
+                    </div>` : ``}
+            </div>`
+        }
+
+        // 进入照片详情设置相关dom（各分块子图打开）
+        function intoPhotoItem(item) {
+            let photoDetailStr = ''
+            const topPhotoDetail = `
+            <div class="top-photo">
+                <img src="${item.cephalogram_url}">
+            </div>
+            `
+            item.children.forEach(detail_item => {
+                photoDetailStr += creatDetailPhotoDom(detail_item.children_url, detail_item.children_introduction)
+            })
+            photoDetail.innerHTML = topPhotoDetail + photoDetailStr
+
+
+            //////音乐部分//////
+            // 判断页面中是否已经存在Audio元素，如果存在，则先将其暂停并移除
+            const audio_before = document.querySelector('audio');
+            if (audio_before) {
+                audio_before.pause();
+                audio_before.currentTime = 0;
+                audio_before.remove();
+            }
+
+            // 创建新的audio元素
+            const audio_now = new Audio(item.music_url);
+            audio_now.autoplay = true;
+            // 添加到DOM中
+            document.body.append(audio_now);
+
+            // 在离开子页时停止音乐播放
+            window.addEventListener('beforeunload', function () {
+                audio_now.pause();
+                audio_now.currentTime = 0;
+            });
+        }
+
+
+
+        /////////////子页设置部分/////////////
+        // 创建loading-dom
+        function addLoading() {
+            const loadingDom = document.createElement('div');
+            const loadingImg = document.createElement('img');
+            loadingDom.className = 'loading';
+            loadingImg.src = './asset/img/logo.png';
+            loadingDom.appendChild(loadingImg);
+            content.appendChild(loadingDom);
+            return loadingDom
+        }
+        function intoDetail(index) {
+                //记录滚动条位置
+                scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                // 设置详细照片的内容
+                intoPhotoItem(photosInfo[index])
+                const loading = addLoading()
+                loading.style.display = 'block'
+                loading.style.animation = 'loading-init 1s cubic-bezier(1, 0.06, .2, .97) forwards'
+                photoWall.style.animation = 'item-out 1s cubic-bezier(1,.06,.2,.6)'
+                //滚动条回到最顶端
+                setTimeout(function () {
+                    window.scrollTo({
+                        top: 0,
+                    }
+                    );
+                    loading.style.animation = 'loading-out 1s cubic-bezier(1,0.06,.2,.97)'
+                    photoWall.style.display = 'none'
+                    photoDetail.style.display = 'flex'
+                    photoDetail.style.animation = 'item-init 1s cubic-bezier(1,0.06,.2,.97) forwards'
+                    loading.addEventListener('animationend', function () {
+                        content.removeChild(loading);
+                    }, false)
+                }, 1200)
+                isHome = true
+        }
+
+        /////////////返回主页/////////////
+        function goHome() {
+            if (isHome) {
+                const loading = addLoading()
+                loading.style.display = 'block'
+                loading.style.animation = 'loading-init 1s cubic-bezier(1, 0.06, .2, .97) forwards'
+                photoDetail.style.animation = 'item-out 1s cubic-bezier(1, 0.06, .2, .97)'
+                setTimeout(function () {
+                    photoWall.style.display = 'flex'
+                    loading.style.animation = 'loading-out 1s cubic-bezier(1,0.06,.2,.97)'
+                    photoDetail.style.display = 'none'
+                    photoWall.style.animation = 'item-init 1s cubic-bezier(1,0.06,.2,.97) forwards'
+                    //滚动条回到原来的位置
+                    document.documentElement.scrollTop = document.body.scrollTop = scrollTop;
+                    loading.addEventListener('animationend', function () {
+                        content.removeChild(loading);
+                    }, false);
+                    // 手动触发 beforeunload 事件,保证回到主页停止音乐
+                    window.dispatchEvent(new Event('beforeunload'));
+                }, 1500)
+                isHome = false
+            }
+        }
+
+        photoItem.forEach((item, index) => {
+            item.addEventListener('click', function () {
+                intoDetail(index)
+            })
+        })
+
+        home.addEventListener('click', function () {
+            goHome();
+        })
+        logo.addEventListener('click', function () {
+            goHome();
+        })
+
+    </script>
+
+<div>
+    <div style="display: flex; justify-content: center; align-items: center;">
+        
+        <!--全景图跳转-->
+        <a href="https://www.skypixel.com/users/djiuser-4xoxpx71pcrq">
+            <img width = "300px" src = ".\asset\img\all_around.png" alt = "点击查看全景图">
+        </a>
+
+        <div style="width: 110px;">
+        </div>
+
+
+        <a href="https://space.bilibili.com/12058436?spm_id_from=333.1007.0.0">
+            <img width = "300px" src = ".\asset\img\bilibili.png" alt = "点击查看全景图">
+        </a>
+
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <div style="color:white">
+            没有动画？上面两图隐藏了什么！！！
+        </div>
+    </div>
+
+    <div style="height: 50px;">
+    </div>
+
+        <!--分割线-->
+    <div style="height: 6px; background-color: white;">
+        <hr style="border-top: 1px solid white; margin: 0;">
+        <div style="background-color:  rgb(19, 21, 24); height: 2px;"></div>
+        <hr style="border-top: 1px solid white; margin: 0;">
+    </div>
+
+    <div style="background-color:  rgb(19, 21, 24); height: 20px;"></div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <img width = "150px" src = ".\asset\img\logo.png" alt = "">
+    </div>
+    
+    <div style="background-color:  rgb(19, 21, 24); height: 20px;"></div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <div style="color:white">
+            以上内容来自鼠大王二世的航拍和手机拍照，子页的音乐将在退出子页后停止，点击上方的“鼠大王二世”、“home”图标返回主页
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <div style="color:white">
+            上述图片、航拍全景图（天空之城）、bilibili视频仅供娱乐，未经本人允许禁止一切商务活动及冒用盗用
+        </div>
+    </div>
+
+    <div style="height: 10px;"></div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <div style="color:white">
+            技术指导：鼠大王二世；大猫是小白（B站up主，https://space.bilibili.com/172008592）；ChatGPT-3.5；ChatGPT-4.0
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <div style="color:white">
+            最终解释权归本人所有，联系方式：2819099716（QQ）
+        </div>
+    </div>
+    <div style="background-color:  rgb(19, 21, 24); height: 20px;"></div>
+
+    <!--分割线-->
+    <div style="height: 6px; background-color: white;">
+        <hr style="border-top: 1px solid white; margin: 0;">
+        <div style="background-color:  rgb(19, 21, 24); height: 2px;"></div>
+        <hr style="border-top: 1px solid white; margin: 0;">
+    </div>
+    <div style="height: 20px;">
+
+</div>
+
+</body>
+
+</html>
